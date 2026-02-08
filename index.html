@@ -9,17 +9,12 @@
     <style>
         :root { --wa-bg: #0b141a; --wa-panel: #202c33; --wa-green: #00a884; }
         body { background-color: var(--wa-bg); color: #e9edef; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
-        /* Glassmorphism & Animations */
         .glass { background: rgba(32, 44, 51, 0.95); backdrop-filter: blur(10px); }
         .msg-in { background: #202c33; border-radius: 0 12px 12px 12px; align-self: flex-start; position: relative; }
         .msg-out { background: #005c4b; border-radius: 12px 0 12px 12px; align-self: flex-end; position: relative; }
         .chat-pattern { background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png'); opacity: 0.06; position: absolute; inset: 0; pointer-events: none; }
-        
         @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .animate-msg { animation: slideIn 0.3s ease-out forwards; }
-        
-        /* Call Pulse */
         .pulse-green { animation: pulse 2s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 168, 132, 0.4); } 70% { box-shadow: 0 0 0 20px rgba(0, 168, 132, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 168, 132, 0); } }
     </style>
@@ -27,7 +22,9 @@
 <body class="h-screen overflow-hidden flex flex-col items-center">
 
     <div id="loginScreen" class="fixed inset-0 z-[2000] bg-[#0b141a] flex flex-col items-center justify-center p-10">
-        <div class="w-24 h-24 bg-[#00a884] rounded-[2rem] flex items-center justify-center text-5xl mb-6 shadow-2xl">📱</div>
+        <div class="w-20 h-20 bg-[#00a884] rounded-[2rem] flex items-center justify-center mb-6 shadow-2xl">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.634 1.437h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        </div>
         <h1 class="text-2xl font-bold mb-2">WhatsApp Pro</h1>
         <p class="text-gray-500 text-sm mb-10 text-center">End-to-end encrypted global connection</p>
         <input type="text" id="nameInput" placeholder="Enter your name" class="w-full max-w-xs p-4 rounded-2xl bg-[#2a3942] border-none outline-none text-center font-bold mb-4 focus:ring-2 focus:ring-[#00a884] transition-all">
@@ -39,25 +36,32 @@
             <h1 class="text-xl font-bold text-gray-100">WhatsApp</h1>
             <div class="flex gap-4 items-center">
                 <span id="onlineBadge" class="w-3 h-3 bg-red-500 rounded-full"></span>
-                <button onclick="location.reload()" class="text-gray-400">↻</button>
+                <button onclick="location.reload()" class="text-gray-400">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M17.65 6.35A7.958 7.958 0 0012 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0112 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                </button>
             </div>
         </header>
-        
         <div id="usersList" class="flex-1 overflow-y-auto p-4 space-y-3">
-            <p class="text-center text-gray-500 mt-20 italic">Searching for global signals...</p>
+            <p class="text-center text-gray-500 mt-20 italic">Searching for signals...</p>
         </div>
     </div>
 
     <div id="chatRoom" class="hidden fixed inset-0 z-[1000] bg-[#0b141a] flex flex-col">
         <header class="p-3 bg-[#202c33] flex items-center gap-3 shadow-xl">
-            <button onclick="closeChat()" class="p-2 text-[#00a884] text-xl">←</button>
+            <button onclick="closeChat()" class="p-2 text-[#00a884]">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+            </button>
             <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center font-bold" id="chatTitleIcon">?</div>
             <div class="flex-1">
                 <h2 id="chatTitleName" class="font-bold text-sm">Target</h2>
                 <p class="text-[10px] text-[#00a884] font-bold">ONLINE</p>
             </div>
-            <button onclick="initCall(false)" class="p-2 text-[#00a884]">📞</button>
-            <button onclick="initCall(true)" class="p-2 text-[#00a884]">📹</button>
+            <button onclick="initCall(false)" class="p-2 text-[#00a884]">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+            </button>
+            <button onclick="initCall(true)" class="p-2 text-[#00a884]">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+            </button>
         </header>
         <div class="flex-1 relative overflow-hidden flex flex-col">
             <div class="chat-pattern"></div>
@@ -65,70 +69,59 @@
         </div>
         <div class="p-3 bg-[#202c33] flex items-center gap-2 z-20">
             <input type="text" id="msgInput" placeholder="Type a message" class="flex-1 bg-[#2a3942] p-3 rounded-full outline-none px-5 text-sm">
-            <button onclick="triggerSend()" class="bg-[#00a884] w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg">➤</button>
+            <button onclick="triggerSend()" class="bg-[#00a884] w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
         </div>
     </div>
 
     <div id="callOverlay" class="hidden fixed inset-0 z-[3000] bg-black flex flex-col items-center justify-between py-20">
         <div class="text-center">
-            <div class="w-24 h-24 bg-gray-700 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl" id="callAvatar">?</div>
+            <div class="w-24 h-24 bg-gray-700 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl overflow-hidden" id="callAvatar">?</div>
             <h2 id="callStatusName" class="text-2xl font-bold">Calling...</h2>
             <p id="callTimer" class="text-[#00a884] font-bold mt-2">Connecting...</p>
         </div>
-        
         <video id="remoteVideo" autoplay playsinline class="absolute inset-0 w-full h-full object-cover hidden"></video>
         <video id="localVideo" autoplay playsinline muted class="absolute bottom-32 right-6 w-32 h-44 rounded-2xl border-2 border-[#00a884] object-cover hidden shadow-2xl"></video>
-
         <div class="z-50 flex gap-10">
-            <button onclick="location.reload()" class="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-xl">📵</button>
-            <button id="answerBtn" onclick="acceptIncoming()" class="hidden bg-green-500 w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-xl pulse-green">📞</button>
+            <button onclick="location.reload()" class="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center shadow-xl">
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+            </button>
+            <button id="answerBtn" onclick="acceptIncoming()" class="hidden bg-green-500 w-16 h-16 rounded-full flex items-center justify-center shadow-xl pulse-green">
+                <svg viewBox="0 0 24 24" width="30" height="30" fill="white"><path d="M20 15.5c-1.25 0-2.45-.2-3.57-.57a1.02 1.02 0 00-1.02.24l-2.2 2.2a15.045 15.045 0 01-6.59-6.59l2.2-2.2c.28-.28.36-.67.25-1.02A11.36 11.36 0 018.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-1z"/></svg>
+            </button>
         </div>
     </div>
 
     <script>
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZfhQSp76NOGXYSM2qAZaVjbI-doX-M7BymT5NkKGcQJSvzt0SEntwmhfn6oPjvhA/exec';
-        
-        // Critical: Global Relay Servers (WebRTC Fix)
-        const PEER_CONFIG = {
-            config: {
-                'iceServers': [
-                    { 'urls': 'stun:stun.l.google.com:19302' },
-                    { 'urls': 'stun:stun1.l.google.com:19302' },
-                    { 'urls': 'stun:stun2.l.google.com:19302' }
-                ]
-            }
-        };
+        const PEER_CONFIG = { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] } };
+        let peer, myId, myName, currentChat, activeCall, localStream, msgCount = 0, ringtone;
 
-        let peer, myId, myName, currentChat, activeCall, localStream, msgCount = 0;
-
-        // Start App
         function startApp() {
             myName = document.getElementById('nameInput').value.trim();
-            if(!myName) return alert("Please enter your name!");
+            if(!myName) return;
             localStorage.setItem('wa_name', myName);
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('homeScreen').classList.remove('hidden');
-            
             initPeer();
         }
 
-        // Initialize Peer with Global ID
         function initPeer() {
             peer = new Peer(PEER_CONFIG);
-            
             peer.on('open', id => {
                 myId = id;
                 document.getElementById('onlineBadge').style.backgroundColor = '#00a884';
                 updatePresence();
-                setInterval(updatePresence, 8000); // 8 sec heartbeat
+                setInterval(updatePresence, 8000);
                 setInterval(refreshUserList, 5000);
             });
-
-            // Handle Incoming Call
             peer.on('call', call => {
                 activeCall = call;
                 showCallUI(true, "Incoming Call...");
-                new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3').play();
+                ringtone = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
+                ringtone.loop = true;
+                ringtone.play();
             });
         }
 
@@ -137,33 +130,34 @@
         }
 
         async function refreshUserList() {
-            const res = await fetch(`${SCRIPT_URL}?action=getUsers`);
-            const users = await res.json();
-            const list = document.getElementById('usersList');
-            list.innerHTML = '';
-            
-            users.forEach(u => {
-                if(u.peerId === myId) return;
-                list.innerHTML += `
-                    <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95" onclick="openChat('${u.name}', '${u.peerId}')">
-                        <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg">${u.name[0]}</div>
-                        <div class="flex-1">
-                            <h3 class="font-bold">${u.name}</h3>
-                            <p class="text-[10px] text-[#00a884] font-bold tracking-widest uppercase">Tap to chat & call</p>
-                        </div>
-                    </div>`;
-            });
-            if(currentChat) fetchMessages();
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getUsers`);
+                const users = await res.json();
+                
+                // Duplicate ID Fix: Sirf unique names (latest) ko rakhein
+                const uniqueUsers = {};
+                users.forEach(u => { uniqueUsers[u.name] = u.peerId; });
+
+                const list = document.getElementById('usersList');
+                list.innerHTML = '';
+                for (const name in uniqueUsers) {
+                    if (name === myName) continue;
+                    list.innerHTML += `
+                        <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95" onclick="openChat('${name}', '${uniqueUsers[name]}')">
+                            <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg">${name[0]}</div>
+                            <div class="flex-1"><h3 class="font-bold">${name}</h3><p class="text-[10px] text-[#00a884] font-bold tracking-widest uppercase">Tap to chat</p></div>
+                        </div>`;
+                }
+                if(currentChat) fetchMessages();
+            } catch(e) {}
         }
 
-        // --- Chat Logic ---
         function openChat(name, id) {
             currentChat = { name, id };
             document.getElementById('chatTitleName').innerText = name;
             document.getElementById('chatTitleIcon').innerText = name[0];
             document.getElementById('chatRoom').classList.remove('hidden');
-            msgCount = 0;
-            fetchMessages();
+            msgCount = 0; fetchMessages();
         }
 
         function closeChat() { document.getElementById('chatRoom').classList.add('hidden'); currentChat = null; }
@@ -171,8 +165,7 @@
         async function triggerSend() {
             const inp = document.getElementById('msgInput');
             const msg = inp.value.trim();
-            if(!msg) return;
-            inp.value = "";
+            if(!msg) return; inp.value = "";
             await fetch(`${SCRIPT_URL}?action=sendSMS&from=${encodeURIComponent(myName)}&to=${encodeURIComponent(currentChat.name)}&msg=${encodeURIComponent(msg)}`);
             fetchMessages();
         }
@@ -181,57 +174,46 @@
             if(!currentChat) return;
             const res = await fetch(`${SCRIPT_URL}?action=getSMS&myName=${encodeURIComponent(myName)}&target=${encodeURIComponent(currentChat.name)}`);
             const msgs = await res.json();
-            
             if(msgs.length > msgCount) {
                 const list = document.getElementById('messagesList');
                 list.innerHTML = '';
                 msgs.forEach(m => {
                     const isOut = (m.from === myName);
-                    list.innerHTML += `<div class="${isOut ? 'msg-out' : 'msg-in'} p-3 max-w-[80%] text-sm animate-msg shadow-md">
-                        ${m.msg}
-                    </div>`;
+                    list.innerHTML += `<div class="${isOut ? 'msg-out' : 'msg-in'} p-3 max-w-[80%] text-sm animate-msg shadow-md">${m.msg}</div>`;
                 });
                 list.scrollTop = list.scrollHeight;
-                if(msgCount !== 0 && msgs[msgs.length-1].from !== myName) {
-                    new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play();
-                }
+                if(msgCount !== 0 && msgs[msgs.length-1].from !== myName) new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play();
                 msgCount = msgs.length;
             }
         }
 
-        // --- Global Video Call Logic ---
         async function initCall(isVideo) {
             showCallUI(false, `Calling ${currentChat.name}...`);
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({video: isVideo, audio: true});
-                if(isVideo) {
-                    document.getElementById('localVideo').srcObject = localStream;
-                    document.getElementById('localVideo').classList.remove('hidden');
-                }
-                
+                if(isVideo) { document.getElementById('localVideo').srcObject = localStream; document.getElementById('localVideo').classList.remove('hidden'); }
                 const call = peer.call(currentChat.id, localStream);
-                handleCallStream(call, isVideo);
-            } catch(e) { alert("Camera/Mic Permission Denied!"); location.reload(); }
+                handleCallStream(call);
+            } catch(e) { location.reload(); }
         }
 
         async function acceptIncoming() {
+            if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; } // Ringing Fix
             document.getElementById('answerBtn').classList.add('hidden');
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
                 document.getElementById('localVideo').srcObject = localStream;
                 document.getElementById('localVideo').classList.remove('hidden');
-                
                 activeCall.answer(localStream);
-                handleCallStream(activeCall, true);
-            } catch(e) { alert("Camera Access Error"); }
+                handleCallStream(activeCall);
+            } catch(e) { location.reload(); }
         }
 
-        function handleCallStream(call, isVideo) {
+        function handleCallStream(call) {
             call.on('stream', rs => {
                 const rv = document.getElementById('remoteVideo');
-                rv.srcObject = rs;
-                rv.classList.remove('hidden');
-                document.getElementById('callTimer').innerText = "00:01 (Connected)";
+                rv.srcObject = rs; rv.classList.remove('hidden');
+                document.getElementById('callTimer').innerText = "Connected";
             });
         }
 
