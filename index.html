@@ -54,7 +54,7 @@
             <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center font-bold" id="chatTitleIcon">?</div>
             <div class="flex-1">
                 <h2 id="chatTitleName" class="font-bold text-sm">Target</h2>
-                <p class="text-[10px] text-[#00a884] font-bold">ONLINE</p>
+                <p id="targetStatusText" class="text-[10px] text-[#00a884] font-bold uppercase">Online</p>
             </div>
             <button onclick="initCall(false)" class="p-2 text-[#00a884]">
                 <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
@@ -84,7 +84,7 @@
         <video id="remoteVideo" autoplay playsinline class="absolute inset-0 w-full h-full object-cover hidden"></video>
         <video id="localVideo" autoplay playsinline muted class="absolute bottom-32 right-6 w-32 h-44 rounded-2xl border-2 border-[#00a884] object-cover hidden shadow-2xl"></video>
         <div class="z-50 flex gap-10">
-            <button onclick="location.reload()" class="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center shadow-xl">
+            <button onclick="endCall()" class="bg-red-600 w-16 h-16 rounded-full flex items-center justify-center shadow-xl">
                 <svg viewBox="0 0 24 24" width="30" height="30" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
             </button>
             <button id="answerBtn" onclick="acceptIncoming()" class="hidden bg-green-500 w-16 h-16 rounded-full flex items-center justify-center shadow-xl pulse-green">
@@ -98,6 +98,7 @@
         const PEER_CONFIG = { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] } };
         let peer, myId, myName, currentChat, activeCall, localStream, msgCount = 0, ringtone;
         let isIncomingVideo = false;
+        let knownUsers = new Map(); // Store users persistently
 
         window.onload = () => {
             const savedName = localStorage.getItem('wa_name');
@@ -125,13 +126,12 @@
                 document.getElementById('onlineBadge').style.backgroundColor = '#00a884';
                 updatePresence();
                 setInterval(updatePresence, 8000);
-                setInterval(refreshUserList, 5000);
+                setInterval(refreshUserList, 4000); // Faster sync
             });
             peer.on('call', call => {
                 activeCall = call;
-                // Check if metadata exists for video
                 isIncomingVideo = call.metadata && call.metadata.video;
-                showCallUI(true, isIncomingVideo ? "Incoming Video Call..." : "Incoming Voice Call...");
+                showCallUI(true, isIncomingVideo ? "Incoming Video..." : "Incoming Voice...");
                 ringtone = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
                 ringtone.loop = true;
                 ringtone.play();
@@ -139,26 +139,39 @@
         }
 
         async function updatePresence() {
-            await fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=${myId}`);
+            try { await fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=${myId}`); } catch(e){}
         }
 
         async function refreshUserList() {
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getUsers`);
                 const users = await res.json();
-                const uniqueUsers = {};
-                users.forEach(u => { uniqueUsers[u.name] = u.peerId; });
+                
+                // UNLIMITED & SINGLE ID LOGIC
+                users.forEach(u => { 
+                    if(u.name !== myName) knownUsers.set(u.name, u.peerId); 
+                });
+
                 const list = document.getElementById('usersList');
                 list.innerHTML = '';
-                for (const name in uniqueUsers) {
-                    if (name === myName) continue;
+                
+                knownUsers.forEach((peerId, name) => {
                     list.innerHTML += `
-                        <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95" onclick="openChat('${name}', '${uniqueUsers[name]}')">
+                        <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95 cursor-pointer" onclick="openChat('${name}', '${peerId}')">
                             <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg">${name[0]}</div>
-                            <div class="flex-1"><h3 class="font-bold">${name}</h3><p class="text-[10px] text-[#00a884] font-bold tracking-widest uppercase">Tap to chat</p></div>
+                            <div class="flex-1">
+                                <h3 class="font-bold">${name}</h3>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Available</p>
+                                </div>
+                            </div>
                         </div>`;
+                });
+                if(currentChat) {
+                    fetchMessages();
+                    if(knownUsers.has(currentChat.name)) currentChat.id = knownUsers.get(currentChat.name);
                 }
-                if(currentChat) fetchMessages();
             } catch(e) {}
         }
 
@@ -167,7 +180,9 @@
             document.getElementById('chatTitleName').innerText = name;
             document.getElementById('chatTitleIcon').innerText = name[0];
             document.getElementById('chatRoom').classList.remove('hidden');
-            msgCount = 0; fetchMessages();
+            msgCount = 0; 
+            document.getElementById('messagesList').innerHTML = '';
+            fetchMessages();
         }
 
         function closeChat() { document.getElementById('chatRoom').classList.add('hidden'); currentChat = null; }
@@ -176,25 +191,32 @@
             const inp = document.getElementById('msgInput');
             const msg = inp.value.trim();
             if(!msg) return; inp.value = "";
-            await fetch(`${SCRIPT_URL}?action=sendSMS&from=${encodeURIComponent(myName)}&to=${encodeURIComponent(currentChat.name)}&msg=${encodeURIComponent(msg)}`);
-            fetchMessages();
+            
+            // Unlimited messages handled by script loop
+            try {
+                await fetch(`${SCRIPT_URL}?action=sendSMS&from=${encodeURIComponent(myName)}&to=${encodeURIComponent(currentChat.name)}&msg=${encodeURIComponent(msg)}`);
+                fetchMessages();
+            } catch(e){}
         }
 
         async function fetchMessages() {
             if(!currentChat) return;
-            const res = await fetch(`${SCRIPT_URL}?action=getSMS&myName=${encodeURIComponent(myName)}&target=${encodeURIComponent(currentChat.name)}`);
-            const msgs = await res.json();
-            if(msgs.length > msgCount) {
-                const list = document.getElementById('messagesList');
-                list.innerHTML = '';
-                msgs.forEach(m => {
-                    const isOut = (m.from === myName);
-                    list.innerHTML += `<div class="${isOut ? 'msg-out' : 'msg-in'} p-3 max-w-[80%] text-sm animate-msg shadow-md">${m.msg}</div>`;
-                });
-                list.scrollTop = list.scrollHeight;
-                if(msgCount !== 0 && msgs[msgs.length-1].from !== myName) new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play();
-                msgCount = msgs.length;
-            }
+            try {
+                const res = await fetch(`${SCRIPT_URL}?action=getSMS&myName=${encodeURIComponent(myName)}&target=${encodeURIComponent(currentChat.name)}`);
+                const msgs = await res.json();
+                
+                if(msgs.length > msgCount) {
+                    const list = document.getElementById('messagesList');
+                    list.innerHTML = '';
+                    msgs.forEach(m => {
+                        const isOut = (m.from === myName);
+                        list.innerHTML += `<div class="${isOut ? 'msg-out' : 'msg-in'} p-3 max-w-[80%] text-sm animate-msg shadow-md">${m.msg}</div>`;
+                    });
+                    list.scrollTop = list.scrollHeight;
+                    if(msgCount !== 0 && msgs[msgs.length-1].from !== myName) new Audio('https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3').play();
+                    msgCount = msgs.length;
+                }
+            } catch(e){}
         }
 
         async function initCall(isVideo) {
@@ -205,17 +227,15 @@
                     document.getElementById('localVideo').srcObject = localStream; 
                     document.getElementById('localVideo').classList.remove('hidden'); 
                 }
-                // Pass video status in metadata so receiver knows
                 const call = peer.call(currentChat.id, localStream, {metadata: {video: isVideo}});
                 handleCallStream(call);
-            } catch(e) { location.reload(); }
+            } catch(e) { endCall(); }
         }
 
         async function acceptIncoming() {
             if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
             document.getElementById('answerBtn').classList.add('hidden');
             try {
-                // Only request video if the incoming call is a video call
                 localStream = await navigator.mediaDevices.getUserMedia({video: isIncomingVideo, audio: true});
                 if(isIncomingVideo) {
                     document.getElementById('localVideo').srcObject = localStream;
@@ -223,21 +243,28 @@
                 }
                 activeCall.answer(localStream);
                 handleCallStream(activeCall);
-            } catch(e) { location.reload(); }
+            } catch(e) { endCall(); }
         }
 
         function handleCallStream(call) {
+            activeCall = call;
             call.on('stream', rs => {
                 const rv = document.getElementById('remoteVideo');
                 rv.srcObject = rs; 
-                // Only show video element if there is a video track
-                if (rs.getVideoTracks().length > 0 && rs.getVideoTracks()[0].enabled) {
-                    rv.classList.remove('hidden');
-                } else {
-                    rv.classList.add('hidden');
-                }
+                if (rs.getVideoTracks().length > 0) rv.classList.remove('hidden');
                 document.getElementById('callTimer').innerText = "Connected";
             });
+            call.on('close', endCall);
+            call.on('error', endCall);
+        }
+
+        function endCall() {
+            if(activeCall) activeCall.close();
+            if(localStream) localStream.getTracks().forEach(t => t.stop());
+            if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
+            document.getElementById('callOverlay').classList.add('hidden');
+            document.getElementById('localVideo').classList.add('hidden');
+            document.getElementById('remoteVideo').classList.add('hidden');
         }
 
         function showCallUI(isIncoming, status) {
