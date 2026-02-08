@@ -98,7 +98,6 @@
         const PEER_CONFIG = { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] } };
         let peer, myId, myName, currentChat, activeCall, localStream, msgCount = 0, ringtone;
         let isIncomingVideo = false;
-        let isAppVisible = true;
 
         window.onload = () => {
             const savedName = localStorage.getItem('wa_name');
@@ -109,19 +108,6 @@
                 initPeer();
             }
         };
-
-        // Visibility Change Tracker
-        document.addEventListener('visibilitychange', () => {
-            isAppVisible = (document.visibilityState === 'visible');
-            updatePresence(); // Turant status change karo
-        });
-
-        // Tab Close Tracker
-        window.addEventListener('beforeunload', () => {
-            isAppVisible = false;
-            // Navigator sendBeacon use hota hai background requests ke liye jab tab band ho raha ho
-            fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=offline`, {keepalive: true});
-        });
 
         function startApp() {
             myName = document.getElementById('nameInput').value.trim();
@@ -137,72 +123,55 @@
             peer.on('open', id => {
                 myId = id;
                 document.getElementById('onlineBadge').style.backgroundColor = '#00a884';
-                updatePresence(); 
-                refreshUserList(); 
-                setInterval(updatePresence, 5000); 
-                setInterval(refreshUserList, 5000); 
+                updatePresence();
+                setInterval(updatePresence, 10000);
+                setInterval(refreshUserList, 3000); // Super fast unlimited sync
             });
             peer.on('call', call => {
                 activeCall = call;
                 isIncomingVideo = call.metadata && call.metadata.video;
                 showCallUI(true, isIncomingVideo ? "Incoming Video..." : "Incoming Voice...");
                 ringtone = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
-                ringtone.loop = true; ringtone.play();
+                ringtone.loop = true;
+                ringtone.play();
             });
         }
 
         async function updatePresence() {
-            if (!myId || !myName) return;
-            const statusId = isAppVisible ? myId : 'offline';
-            try { 
-                await fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=${statusId}`); 
-            } catch(e){}
+            try { await fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=${myId}`); } catch(e){}
         }
 
         async function refreshUserList() {
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getUsers`);
                 const users = await res.json();
-                const now = Date.now();
+                
+                // UNLIMITED LIST LOGIC: Group by name to show only latest ID
                 const latestUsers = {};
-
                 users.forEach(u => {
-                    if (u.name === myName) return;
-                    
-                    // Logic: Agar peerId 'offline' nahi hai aur heartbeat 30s se purani nahi hai
-                    const userTime = new Date(u.timestamp).getTime();
-                    if(u.peerId !== 'offline' && (now - userTime) < 30000) {
-                        if (!latestUsers[u.name] || new Date(u.timestamp) > new Date(latestUsers[u.name].time)) {
-                            latestUsers[u.name] = { id: u.peerId, time: u.timestamp };
-                        }
-                    }
+                    if(u.name !== myName) latestUsers[u.name] = u.peerId;
                 });
 
                 const list = document.getElementById('usersList');
-                let html = '';
-                const activeNames = Object.keys(latestUsers);
-
-                if (activeNames.length > 0) {
-                    activeNames.forEach(name => {
-                        html += `
-                            <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95 cursor-pointer animate-msg" onclick="openChat('${name}', '${latestUsers[name].id}')">
+                if (Object.keys(latestUsers).length > 0) {
+                    list.innerHTML = '';
+                    for (const name in latestUsers) {
+                        const pId = latestUsers[name];
+                        list.innerHTML += `
+                            <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95 cursor-pointer" onclick="openChat('${name}', '${pId}')">
                                 <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg text-white">${name[0]}</div>
                                 <div class="flex-1">
                                     <h3 class="font-bold">${name}</h3>
                                     <div class="flex items-center gap-1">
                                         <span class="w-2 h-2 rounded-full bg-green-500 pulse-green"></span>
-                                        <p class="text-[10px] text-[#00a884] font-bold uppercase tracking-widest">Online</p>
+                                        <p class="text-[10px] text-[#00a884] font-bold uppercase tracking-widest">Online Now</p>
                                     </div>
                                 </div>
                             </div>`;
-                    });
-                    list.innerHTML = html;
-                } else {
-                    list.innerHTML = '<p class="text-center text-gray-500 mt-20 italic">No one is online right now...</p>';
+                    }
                 }
-
                 if(currentChat && latestUsers[currentChat.name]) {
-                    currentChat.id = latestUsers[currentChat.name].id;
+                    currentChat.id = latestUsers[currentChat.name];
                     fetchMessages();
                 }
             } catch(e) {}
@@ -213,7 +182,8 @@
             document.getElementById('chatTitleName').innerText = name;
             document.getElementById('chatTitleIcon').innerText = name[0];
             document.getElementById('chatRoom').classList.remove('hidden');
-            msgCount = 0; document.getElementById('messagesList').innerHTML = '';
+            msgCount = 0; 
+            document.getElementById('messagesList').innerHTML = '';
             fetchMessages();
         }
 
@@ -235,6 +205,7 @@
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getSMS&myName=${encodeURIComponent(myName)}&target=${encodeURIComponent(currentChat.name)}`);
                 const msgs = await res.json();
+                
                 if(msgs.length > msgCount) {
                     const list = document.getElementById('messagesList');
                     list.innerHTML = '';
@@ -280,7 +251,8 @@
             activeCall = call;
             call.on('stream', rs => {
                 const rv = document.getElementById('remoteVideo');
-                rv.srcObject = rs; if (rs.getVideoTracks().length > 0) rv.classList.remove('hidden');
+                rv.srcObject = rs; 
+                if (rs.getVideoTracks().length > 0) rv.classList.remove('hidden');
                 document.getElementById('callTimer').innerText = "Connected";
             });
             call.on('close', endCall);
