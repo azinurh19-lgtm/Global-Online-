@@ -124,16 +124,15 @@
                 myId = id;
                 document.getElementById('onlineBadge').style.backgroundColor = '#00a884';
                 updatePresence();
-                setInterval(updatePresence, 10000);
-                setInterval(refreshUserList, 3000); // Super fast unlimited sync
+                setInterval(updatePresence, 7000); // Send heartbeat every 7s
+                setInterval(refreshUserList, 4000); 
             });
             peer.on('call', call => {
                 activeCall = call;
                 isIncomingVideo = call.metadata && call.metadata.video;
                 showCallUI(true, isIncomingVideo ? "Incoming Video..." : "Incoming Voice...");
                 ringtone = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
-                ringtone.loop = true;
-                ringtone.play();
+                ringtone.loop = true; ringtone.play();
             });
         }
 
@@ -145,31 +144,34 @@
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getUsers`);
                 const users = await res.json();
-                
-                // UNLIMITED LIST LOGIC: Group by name to show only latest ID
+                const now = Date.now();
                 const latestUsers = {};
+
                 users.forEach(u => {
-                    if(u.name !== myName) latestUsers[u.name] = u.peerId;
+                    // Timeout logic: 20 seconds se purana user offline mana jayega
+                    const userTime = new Date(u.timestamp).getTime();
+                    if(u.name !== myName && (now - userTime) < 20000) {
+                        latestUsers[u.name] = u.peerId;
+                    }
                 });
 
                 const list = document.getElementById('usersList');
-                if (Object.keys(latestUsers).length > 0) {
-                    list.innerHTML = '';
-                    for (const name in latestUsers) {
-                        const pId = latestUsers[name];
-                        list.innerHTML += `
-                            <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95 cursor-pointer" onclick="openChat('${name}', '${pId}')">
-                                <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg text-white">${name[0]}</div>
-                                <div class="flex-1">
-                                    <h3 class="font-bold">${name}</h3>
-                                    <div class="flex items-center gap-1">
-                                        <span class="w-2 h-2 rounded-full bg-green-500 pulse-green"></span>
-                                        <p class="text-[10px] text-[#00a884] font-bold uppercase tracking-widest">Online Now</p>
-                                    </div>
+                let html = '';
+                for (const name in latestUsers) {
+                    html += `
+                        <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95 cursor-pointer" onclick="openChat('${name}', '${latestUsers[name]}')">
+                            <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg text-white">${name[0]}</div>
+                            <div class="flex-1">
+                                <h3 class="font-bold">${name}</h3>
+                                <div class="flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-green-500 pulse-green"></span>
+                                    <p class="text-[10px] text-[#00a884] font-bold uppercase tracking-widest">Online Now</p>
                                 </div>
-                            </div>`;
-                    }
+                            </div>
+                        </div>`;
                 }
+                list.innerHTML = html || '<p class="text-center text-gray-500 mt-20 italic">No one is online...</p>';
+
                 if(currentChat && latestUsers[currentChat.name]) {
                     currentChat.id = latestUsers[currentChat.name];
                     fetchMessages();
@@ -182,8 +184,7 @@
             document.getElementById('chatTitleName').innerText = name;
             document.getElementById('chatTitleIcon').innerText = name[0];
             document.getElementById('chatRoom').classList.remove('hidden');
-            msgCount = 0; 
-            document.getElementById('messagesList').innerHTML = '';
+            msgCount = 0; document.getElementById('messagesList').innerHTML = '';
             fetchMessages();
         }
 
@@ -205,7 +206,6 @@
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getSMS&myName=${encodeURIComponent(myName)}&target=${encodeURIComponent(currentChat.name)}`);
                 const msgs = await res.json();
-                
                 if(msgs.length > msgCount) {
                     const list = document.getElementById('messagesList');
                     list.innerHTML = '';
@@ -251,8 +251,7 @@
             activeCall = call;
             call.on('stream', rs => {
                 const rv = document.getElementById('remoteVideo');
-                rv.srcObject = rs; 
-                if (rs.getVideoTracks().length > 0) rv.classList.remove('hidden');
+                rv.srcObject = rs; if (rs.getVideoTracks().length > 0) rv.classList.remove('hidden');
                 document.getElementById('callTimer').innerText = "Connected";
             });
             call.on('close', endCall);
