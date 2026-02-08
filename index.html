@@ -98,6 +98,7 @@
         const PEER_CONFIG = { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] } };
         let peer, myId, myName, currentChat, activeCall, localStream, msgCount = 0, ringtone;
         let isIncomingVideo = false;
+        let isAppVisible = true;
 
         window.onload = () => {
             const savedName = localStorage.getItem('wa_name');
@@ -108,6 +109,19 @@
                 initPeer();
             }
         };
+
+        // Visibility Change Tracker
+        document.addEventListener('visibilitychange', () => {
+            isAppVisible = (document.visibilityState === 'visible');
+            updatePresence(); // Turant status change karo
+        });
+
+        // Tab Close Tracker
+        window.addEventListener('beforeunload', () => {
+            isAppVisible = false;
+            // Navigator sendBeacon use hota hai background requests ke liye jab tab band ho raha ho
+            fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=offline`, {keepalive: true});
+        });
 
         function startApp() {
             myName = document.getElementById('nameInput').value.trim();
@@ -123,9 +137,10 @@
             peer.on('open', id => {
                 myId = id;
                 document.getElementById('onlineBadge').style.backgroundColor = '#00a884';
-                updatePresence();
-                setInterval(updatePresence, 7000); // Send heartbeat every 7s
-                setInterval(refreshUserList, 4000); 
+                updatePresence(); 
+                refreshUserList(); 
+                setInterval(updatePresence, 5000); 
+                setInterval(refreshUserList, 5000); 
             });
             peer.on('call', call => {
                 activeCall = call;
@@ -137,7 +152,11 @@
         }
 
         async function updatePresence() {
-            try { await fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=${myId}`); } catch(e){}
+            if (!myId || !myName) return;
+            const statusId = isAppVisible ? myId : 'offline';
+            try { 
+                await fetch(`${SCRIPT_URL}?action=addUser&name=${encodeURIComponent(myName)}&peerId=${statusId}`); 
+            } catch(e){}
         }
 
         async function refreshUserList() {
@@ -148,32 +167,42 @@
                 const latestUsers = {};
 
                 users.forEach(u => {
-                    // Timeout logic: 20 seconds se purana user offline mana jayega
+                    if (u.name === myName) return;
+                    
+                    // Logic: Agar peerId 'offline' nahi hai aur heartbeat 30s se purani nahi hai
                     const userTime = new Date(u.timestamp).getTime();
-                    if(u.name !== myName && (now - userTime) < 20000) {
-                        latestUsers[u.name] = u.peerId;
+                    if(u.peerId !== 'offline' && (now - userTime) < 30000) {
+                        if (!latestUsers[u.name] || new Date(u.timestamp) > new Date(latestUsers[u.name].time)) {
+                            latestUsers[u.name] = { id: u.peerId, time: u.timestamp };
+                        }
                     }
                 });
 
                 const list = document.getElementById('usersList');
                 let html = '';
-                for (const name in latestUsers) {
-                    html += `
-                        <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95 cursor-pointer" onclick="openChat('${name}', '${latestUsers[name]}')">
-                            <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg text-white">${name[0]}</div>
-                            <div class="flex-1">
-                                <h3 class="font-bold">${name}</h3>
-                                <div class="flex items-center gap-1">
-                                    <span class="w-2 h-2 rounded-full bg-green-500 pulse-green"></span>
-                                    <p class="text-[10px] text-[#00a884] font-bold uppercase tracking-widest">Online Now</p>
+                const activeNames = Object.keys(latestUsers);
+
+                if (activeNames.length > 0) {
+                    activeNames.forEach(name => {
+                        html += `
+                            <div class="bg-[#202c33] p-4 rounded-2xl flex items-center gap-4 transition-all active:scale-95 cursor-pointer animate-msg" onclick="openChat('${name}', '${latestUsers[name].id}')">
+                                <div class="w-12 h-12 bg-[#00a884] rounded-full flex items-center justify-center font-bold text-lg text-white">${name[0]}</div>
+                                <div class="flex-1">
+                                    <h3 class="font-bold">${name}</h3>
+                                    <div class="flex items-center gap-1">
+                                        <span class="w-2 h-2 rounded-full bg-green-500 pulse-green"></span>
+                                        <p class="text-[10px] text-[#00a884] font-bold uppercase tracking-widest">Online</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>`;
+                            </div>`;
+                    });
+                    list.innerHTML = html;
+                } else {
+                    list.innerHTML = '<p class="text-center text-gray-500 mt-20 italic">No one is online right now...</p>';
                 }
-                list.innerHTML = html || '<p class="text-center text-gray-500 mt-20 italic">No one is online...</p>';
 
                 if(currentChat && latestUsers[currentChat.name]) {
-                    currentChat.id = latestUsers[currentChat.name];
+                    currentChat.id = latestUsers[currentChat.name].id;
                     fetchMessages();
                 }
             } catch(e) {}
