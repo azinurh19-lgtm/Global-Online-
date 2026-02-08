@@ -98,6 +98,16 @@
         const PEER_CONFIG = { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] } };
         let peer, myId, myName, currentChat, activeCall, localStream, msgCount = 0, ringtone;
 
+        window.onload = () => {
+            const savedName = localStorage.getItem('wa_name');
+            if(savedName) {
+                myName = savedName;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('homeScreen').classList.remove('hidden');
+                initPeer();
+            }
+        };
+
         function startApp() {
             myName = document.getElementById('nameInput').value.trim();
             if(!myName) return;
@@ -133,11 +143,8 @@
             try {
                 const res = await fetch(`${SCRIPT_URL}?action=getUsers`);
                 const users = await res.json();
-                
-                // Duplicate ID Fix: Sirf unique names (latest) ko rakhein
                 const uniqueUsers = {};
                 users.forEach(u => { uniqueUsers[u.name] = u.peerId; });
-
                 const list = document.getElementById('usersList');
                 list.innerHTML = '';
                 for (const name in uniqueUsers) {
@@ -190,17 +197,22 @@
         async function initCall(isVideo) {
             showCallUI(false, `Calling ${currentChat.name}...`);
             try {
+                // Constraint update: video false for voice calls
                 localStream = await navigator.mediaDevices.getUserMedia({video: isVideo, audio: true});
-                if(isVideo) { document.getElementById('localVideo').srcObject = localStream; document.getElementById('localVideo').classList.remove('hidden'); }
+                if(isVideo) { 
+                    document.getElementById('localVideo').srcObject = localStream; 
+                    document.getElementById('localVideo').classList.remove('hidden'); 
+                }
                 const call = peer.call(currentChat.id, localStream);
                 handleCallStream(call);
             } catch(e) { location.reload(); }
         }
 
         async function acceptIncoming() {
-            if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; } // Ringing Fix
+            if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
             document.getElementById('answerBtn').classList.add('hidden');
             try {
+                // Incoming calls always try for both, WebRTC handles the fallback
                 localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
                 document.getElementById('localVideo').srcObject = localStream;
                 document.getElementById('localVideo').classList.remove('hidden');
@@ -212,7 +224,9 @@
         function handleCallStream(call) {
             call.on('stream', rs => {
                 const rv = document.getElementById('remoteVideo');
-                rv.srcObject = rs; rv.classList.remove('hidden');
+                rv.srcObject = rs; 
+                // Voice call ke liye remote video hidden hi rahegi, sirf audio bajega
+                if (rs.getVideoTracks().length > 0) rv.classList.remove('hidden');
                 document.getElementById('callTimer').innerText = "Connected";
             });
         }
