@@ -97,6 +97,7 @@
         const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwZfhQSp76NOGXYSM2qAZaVjbI-doX-M7BymT5NkKGcQJSvzt0SEntwmhfn6oPjvhA/exec';
         const PEER_CONFIG = { config: { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }, { 'urls': 'stun:stun1.l.google.com:19302' }] } };
         let peer, myId, myName, currentChat, activeCall, localStream, msgCount = 0, ringtone;
+        let isIncomingVideo = false;
 
         window.onload = () => {
             const savedName = localStorage.getItem('wa_name');
@@ -128,7 +129,9 @@
             });
             peer.on('call', call => {
                 activeCall = call;
-                showCallUI(true, "Incoming Call...");
+                // Check if metadata exists for video
+                isIncomingVideo = call.metadata && call.metadata.video;
+                showCallUI(true, isIncomingVideo ? "Incoming Video Call..." : "Incoming Voice Call...");
                 ringtone = new Audio('https://assets.mixkit.co/active_storage/sfx/1359/1359-preview.mp3');
                 ringtone.loop = true;
                 ringtone.play();
@@ -195,15 +198,15 @@
         }
 
         async function initCall(isVideo) {
-            showCallUI(false, `Calling ${currentChat.name}...`);
+            showCallUI(false, isVideo ? `Calling Video...` : `Calling Voice...`);
             try {
-                // Constraint update: video false for voice calls
                 localStream = await navigator.mediaDevices.getUserMedia({video: isVideo, audio: true});
                 if(isVideo) { 
                     document.getElementById('localVideo').srcObject = localStream; 
                     document.getElementById('localVideo').classList.remove('hidden'); 
                 }
-                const call = peer.call(currentChat.id, localStream);
+                // Pass video status in metadata so receiver knows
+                const call = peer.call(currentChat.id, localStream, {metadata: {video: isVideo}});
                 handleCallStream(call);
             } catch(e) { location.reload(); }
         }
@@ -212,10 +215,12 @@
             if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
             document.getElementById('answerBtn').classList.add('hidden');
             try {
-                // Incoming calls always try for both, WebRTC handles the fallback
-                localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-                document.getElementById('localVideo').srcObject = localStream;
-                document.getElementById('localVideo').classList.remove('hidden');
+                // Only request video if the incoming call is a video call
+                localStream = await navigator.mediaDevices.getUserMedia({video: isIncomingVideo, audio: true});
+                if(isIncomingVideo) {
+                    document.getElementById('localVideo').srcObject = localStream;
+                    document.getElementById('localVideo').classList.remove('hidden');
+                }
                 activeCall.answer(localStream);
                 handleCallStream(activeCall);
             } catch(e) { location.reload(); }
@@ -225,8 +230,12 @@
             call.on('stream', rs => {
                 const rv = document.getElementById('remoteVideo');
                 rv.srcObject = rs; 
-                // Voice call ke liye remote video hidden hi rahegi, sirf audio bajega
-                if (rs.getVideoTracks().length > 0) rv.classList.remove('hidden');
+                // Only show video element if there is a video track
+                if (rs.getVideoTracks().length > 0 && rs.getVideoTracks()[0].enabled) {
+                    rv.classList.remove('hidden');
+                } else {
+                    rv.classList.add('hidden');
+                }
                 document.getElementById('callTimer').innerText = "Connected";
             });
         }
